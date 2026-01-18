@@ -24,9 +24,13 @@ contract SecureVault is ReentrancyGuard {
 
     mapping(address => uint256) public balances;
 
+    mapping(address => uint256) public lastWithdrawalCancelTime;
+
+    uint256 public withdrawalCancelDelay = 2 hours;
+
     uint256 public constant withdrawalLockedPeriod = 1 days;
 
-    bool private locked;
+    // bool private locked;
 
     // modifier nonReentrant() {
     //     require(!locked, "Reentrancy Guard: reentrant call");
@@ -127,12 +131,21 @@ contract SecureVault is ReentrancyGuard {
 
     function cancelPendingWithdrawal() external nonReentrant {
         uint256 amount = pendingWithdrawals[msg.sender];
-
         require(amount > 0, "You don't have a pending withdrawal");
+
+        uint256 lastCancel = lastWithdrawalCancelTime[msg.sender];
+        if (lastCancel > 0) {
+            require(
+                block.timestamp >= lastCancel + withdrawalCancelDelay,
+                "You must wait 2 hours before cancelling again!"
+            );
+        }
 
         pendingWithdrawals[msg.sender] = 0;
 
         balances[msg.sender] += amount;
+
+        lastWithdrawalCancelTime[msg.sender] = block.timestamp;
 
         delete withdrawalRequestTime[msg.sender];
 
