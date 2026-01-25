@@ -12,14 +12,14 @@ contract SecureVault is ReentrancyGuard {
     /// @notice Emitted when a user deposits funds into the vault.
     /// @param user The address of the depositor.
     /// @param amount The amount of ETH deposited.
-    event UserDeposited(address user, uint256 amount);
+    event UserDeposited(address indexed user, uint256 amount);
 
     /// @notice Emitted when a withdrawal request is initiated.
     /// @param user The address of user making the withdrawal request
     /// @param amount The amount o ETH requested for withdrawal
     /// @param requestTime The time the withdrawal was requested
     event UserRequestedWithdrawal(
-        address user,
+        address indexed user,
         uint256 amount,
         uint256 requestTime
     );
@@ -27,21 +27,21 @@ contract SecureVault is ReentrancyGuard {
     /// @notice Emitted when a user successfully claims their funds after the lock period.
     /// @param user The address of the user that made the withdrawal
     /// @param amount The amount of ETH withdrawn
-    event UserWithdrawn(address user, uint256 amount);
+    event UserWithdrawn(address indexed user, uint256 amount);
 
     /// @notice Emitted when an existing withdrawal request is updated
     /// @param user The address of the user that made changes to the requested withdrawal
     /// @param previousAmount The previous amount requested to be withdraw
     /// @param newAmount The new amount requested to be withdraw
     event UserModifiedPendingWithdrawal(
-        address user,
+        address indexed user,
         uint256 previousAmount,
         uint256 newAmount
     );
 
     /// @notice Emitted when a pending withdrawal has been cancelled and funds returned to balance
     /// @param user The address of the user cancelling the request
-    event UserCancelledPendingWithdrawal(address user);
+    event UserCancelledPendingWithdrawal(address indexed user);
 
     // ------- State Variables ---------
 
