@@ -25,14 +25,15 @@ contract SecureVaultTest is Test {
     }
 
     function testDepositIncreasesBalance() public {
-        vm.startPrank(user1);
+        vm.prank(user1);
+
+        vm.expectEmit(true, false, false, true);
+        emit SecureVault.UserDeposited(user1, DEPOSIT_AMOUNT);
 
         vault.deposit{value: DEPOSIT_AMOUNT}();
 
-        assertEq(vault.getBalance(), DEPOSIT_AMOUNT);
+        assertEq(vault.balances(user1), DEPOSIT_AMOUNT);
         assertEq(address(vault).balance, DEPOSIT_AMOUNT);
-
-        vm.stopPrank();
     }
 
     function testDepositRevertsIfZero() public {
@@ -47,6 +48,14 @@ contract SecureVaultTest is Test {
         vm.startPrank(user1);
 
         vault.deposit{value: DEPOSIT_AMOUNT}();
+        uint256 requestTime = block.timestamp;
+
+        vm.expectEmit(true, false, false, true);
+        emit SecureVault.UserRequestedWithdrawal(
+            user1,
+            WITHDRAWAL_AMOUNT,
+            requestTime
+        );
 
         vault.requestWithdrawal(WITHDRAWAL_AMOUNT);
 
@@ -115,6 +124,9 @@ contract SecureVaultTest is Test {
 
         uint256 userBalanceBefore = user1.balance;
 
+        vm.expectEmit(true, false, false, true);
+        emit SecureVault.UserWithdrawn(user1, WITHDRAWAL_AMOUNT);
+
         vault.claimPendingWithdrawal();
 
         vm.stopPrank();
@@ -168,9 +180,18 @@ contract SecureVaultTest is Test {
 
         vm.warp(block.timestamp + 1 hours);
 
-        vault.modifyPendingWithdrawal(5 ether);
+        uint256 newAmount = 5 ether;
 
-        assertEq(vault.pendingWithdrawals(user1), 5 ether);
+        vm.expectEmit(true, false, false, true);
+        emit SecureVault.UserModifiedPendingWithdrawal(
+            user1,
+            WITHDRAWAL_AMOUNT,
+            newAmount
+        );
+
+        vault.modifyPendingWithdrawal(newAmount);
+
+        assertEq(vault.pendingWithdrawals(user1), newAmount);
         assertEq(vault.withdrawalRequestTime(user1), block.timestamp);
 
         vm.stopPrank();
@@ -244,6 +265,10 @@ contract SecureVaultTest is Test {
         vault.deposit{value: DEPOSIT_AMOUNT}();
 
         vault.requestWithdrawal(WITHDRAWAL_AMOUNT);
+
+        vm.expectEmit(true,false,false,false);
+        emit SecureVault.UserCancelledPendingWithdrawal(user1);
+
 
         vault.cancelPendingWithdrawal();
 
