@@ -1,0 +1,12 @@
+/*
+  Warnings:
+
+  - You are about to drop the column `lastLogin` on the `User` table. All the data in the column will be lost.
+
+*/
+-- DropIndex
+DROP INDEX "User_walletAddress_idx";
+
+-- AlterTable
+ALTER TABLE "User" DROP COLUMN "lastLogin",
+ADD COLUMN     "lastLoginAt" TIMESTAMP(3);
