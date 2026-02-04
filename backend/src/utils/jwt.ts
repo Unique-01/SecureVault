@@ -1,6 +1,15 @@
 import jwt, { Secret } from "jsonwebtoken";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET as Secret;
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
+
+export interface JwtPayload {
+    userId: string;
+    walletAddress: string;
+}
 
 if (!JWT_SECRET) {
     throw new Error(
@@ -8,10 +17,10 @@ if (!JWT_SECRET) {
     );
 }
 
-export function signJwt(payload: object, expiresIn = "7d") {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: expiresIn as any });
+export function signJwt(payload: JwtPayload) {
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN as any });
 }
 
 export function verifyJwt(token: string) {
-    return jwt.verify(token, JWT_SECRET);
+    return jwt.verify(token, JWT_SECRET) as JwtPayload;
 }
