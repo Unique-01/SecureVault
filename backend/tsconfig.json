@@ -9,11 +9,12 @@
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
         "skipLibCheck": true,
+        "typeRoots": ["./src/types", "./node_modules/@types"],
         "baseUrl": "./src",
         "paths": {
             "@utils/*": ["utils/*"],
             "@modules/*": ["modules/*"],
-            "@prisma/*": ["prisma/*"]
+            "@prisma/*": ["prisma/*"],
         }
     }
 }
