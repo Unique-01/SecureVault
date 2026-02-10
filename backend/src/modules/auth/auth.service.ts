@@ -25,6 +25,7 @@ export async function verifySignature(
     walletAddress: string,
     signature: string
 ): Promise<{ token: string }> {
+    console.log("Verify signature function called.")
     const normalizedWallet = walletAddress.toLowerCase();
 
     const authNonce = await prisma.authNonce.findUnique({
@@ -71,12 +72,7 @@ export async function verifySignature(
         data: { lastLoginAt: new Date() },
     });
 
-    await prisma.user.update({
-        where: { walletAddress: normalizedWallet },
-        data: { lastLoginAt: new Date() },
-    });
-
-    const token = signJwt({ walletAddress: normalizedWallet });
+    const token = signJwt({ walletAddress: normalizedWallet, userId: user.id });
 
     await prisma.authNonce.delete({
         where: { walletAddress: normalizedWallet },

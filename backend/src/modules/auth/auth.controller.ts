@@ -8,14 +8,14 @@ export async function requestNonce(req: Request, res: Response) {
         if (!walletAddress) {
             return res
                 .status(400)
-                .json({ error: "Wallet Address is required" });
+                .json({ message: "Wallet Address is required" });
         }
 
         const message = await getNonceMessage(walletAddress);
         return res.json({ message });
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ error: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 }
 
@@ -26,7 +26,7 @@ export const verifyNonce = async (req: Request, res: Response) => {
         if (!walletAddress || !signature) {
             return res
                 .status(400)
-                .json({ error: "Wallet address and signature are required" });
+                .json({ message: "Wallet address and signature are required" });
         }
 
         const { token } = await verifySignature(walletAddress, signature);
@@ -34,6 +34,6 @@ export const verifyNonce = async (req: Request, res: Response) => {
         return res.json({ token });
     } catch (error: any) {
         console.error(error);
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json({ message: error.message });
     }
 };
