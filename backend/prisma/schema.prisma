@@ -29,3 +29,18 @@ model AuthNonce {
 
   @@id([walletAddress])
 }
+
+model VaultEvent {
+  id            String   @id @default(uuid())
+  walletAddress String
+  eventType     String
+  amount        Decimal?
+  txHash        String   @unique
+  blockNumber   Int
+  timestamp     DateTime
+}
+
+model IndexerState {
+  id        String @id
+  lastBlock BigInt
+}

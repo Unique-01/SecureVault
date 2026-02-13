@@ -1,7 +1,10 @@
 import app from "./app.js";
-import dotenv from "dotenv"
+import dotenv from "dotenv";
+import { startIndexer } from "blockchain/bootstrap.js";
 
-dotenv.config()
+dotenv.config();
+
+startIndexer().catch(console.error);
 
 const PORT = 8000;
 
