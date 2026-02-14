@@ -8,14 +8,17 @@ if (!VAULT_ADDRESS) {
     throw new Error("VAULT_ADDRESS is not defined in environment variables");
 }
 
-export const indexSecureVaultEvents = async (fromBlock: bigint) => {
+export const indexSecureVaultEvents = async (
+    fromBlock: bigint,
+    toBlock: bigint
+) => {
     console.log(`Indexing SecureVault Events from block ${fromBlock}`);
 
     const logs = await publicClient.getLogs({
         address: VAULT_ADDRESS,
         events: secureVaultAbi,
         fromBlock,
-        toBlock: "latest",
+        toBlock,
     });
 
     const blockCache = new Map<

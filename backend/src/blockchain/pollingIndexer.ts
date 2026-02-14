@@ -5,6 +5,7 @@ import { indexSecureVaultEvents } from "./indexSecureVaultEvents.js";
 const INDEXER_ID = "secureVault";
 const DEPLOYMENT_BLOCK = BigInt(process.env.DEPLOYMENT_BLOCK!);
 const POLL_INTERVAL = 5000; // 5 seconds
+const MAX_BLOCK_RANGE = 9n;
 
 let isIndexing = false;
 
@@ -33,7 +34,7 @@ async function syncOnce() {
             where: { id: INDEXER_ID },
         });
 
-        const lastIndexedBlock = state?.lastBlock ?? DEPLOYMENT_BLOCK;
+        let lastIndexedBlock = state?.lastBlock ?? DEPLOYMENT_BLOCK;
 
         const latestBlock = await publicClient.getBlockNumber();
 
@@ -42,23 +43,31 @@ async function syncOnce() {
             return;
         }
 
-        const fromBlock = lastIndexedBlock + 1n;
-        const toBlock = latestBlock;
+        while (lastIndexedBlock < latestBlock) {
+            const fromBlock = lastIndexedBlock + 1n;
+            const toBlock =
+                fromBlock + MAX_BLOCK_RANGE > latestBlock
+                    ? latestBlock
+                    : fromBlock + MAX_BLOCK_RANGE;
 
-        console.log(`Indexing blocks ${fromBlock} → ${toBlock}`);
+            console.log(`Indexing blocks ${fromBlock} → ${toBlock}`);
 
-        await indexSecureVaultEvents(fromBlock);
+            await indexSecureVaultEvents(fromBlock, toBlock);
 
-        await prisma.indexerState.upsert({
-            where: { id: INDEXER_ID },
-            update: { lastBlock: toBlock },
-            create: {
-                id: INDEXER_ID,
-                lastBlock: toBlock,
-            },
-        });
+            await prisma.indexerState.upsert({
+                where: { id: INDEXER_ID },
+                update: { lastBlock: toBlock },
+                create: {
+                    id: INDEXER_ID,
+                    lastBlock: toBlock,
+                },
+            });
 
-        console.log(`Synced up to block ${toBlock}`);
+            lastIndexedBlock = toBlock;
+        }
+
+        console.log(`Sync complete.`);
+        // const toBlock = latestBlock;
     } catch (error) {
         console.error("Indexer error:", error);
     } finally {
