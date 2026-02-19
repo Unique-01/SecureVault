@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth } from "middlewares/auth.middlewares.js";
+import { requireAuth } from "@middlewares/auth.middlewares.js";
 import { deposits, history, withdrawals } from "./vault.controller.js";
 
 const router = Router();

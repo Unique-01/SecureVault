@@ -3,18 +3,19 @@
         "target": "ES2020",
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
-        "rootDir": "./src",
+        "rootDir": "./",
         "outDir": "./dist",
         "strict": true,
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
         "skipLibCheck": true,
         "typeRoots": ["./src/types", "./node_modules/@types"],
-        "baseUrl": "./src",
+        "baseUrl": ".",
         "paths": {
-            "@utils/*": ["utils/*"],
-            "@modules/*": ["modules/*"],
-            "@prisma/*": ["prisma/*"],
+            "@utils/*": ["src/utils/*"],
+            "@modules/*": ["src/modules/*"],
+            "@prisma/*": ["src/prisma/*"],
+            "@middlewares/*": ["src/middlewares/*"]
         }
     }
 }
