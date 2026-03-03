@@ -1,10 +1,13 @@
 import { generateNonce } from "@utils/nonce.js";
-import { prisma } from "@prisma/client.js";
 import { createLoginMessage } from "@utils/message.js";
 import { Hex, recoverMessageAddress } from "viem";
 import { signJwt } from "@utils/jwt.js";
+import { IAuthRepository } from "./auth.interface.js";
 
-export async function getNonceMessage(walletAddress: string): Promise<string> {
+export async function getNonceMessage(
+    walletAddress: string,
+    repo: IAuthRepository
+): Promise<string> {
     const normalizedWallet = walletAddress.toLowerCase();
 
     const nonce = generateNonce(16);
@@ -12,25 +15,19 @@ export async function getNonceMessage(walletAddress: string): Promise<string> {
     // Expires in 5 minutes
     const expiresAt = new Date(Date.now() + 5 * 60_000);
 
-    await prisma.authNonce.upsert({
-        where: { walletAddress: normalizedWallet },
-        update: { nonce, expiresAt },
-        create: { walletAddress: normalizedWallet, nonce, expiresAt },
-    });
+    await repo.upsertNonce(normalizedWallet, nonce, expiresAt);
 
     return createLoginMessage(normalizedWallet, nonce, expiresAt.toISOString());
 }
 
 export async function verifySignature(
     walletAddress: string,
-    signature: string
+    signature: string,
+    repo: IAuthRepository
 ): Promise<{ token: string }> {
-    console.log("Verify signature function called.")
     const normalizedWallet = walletAddress.toLowerCase();
 
-    const authNonce = await prisma.authNonce.findUnique({
-        where: { walletAddress: normalizedWallet },
-    });
+    const authNonce = await repo.findNonce(normalizedWallet);
 
     if (!authNonce) {
         throw new Error("Nonce not found. Request a new one");
@@ -57,26 +54,17 @@ export async function verifySignature(
         throw new Error("Invalid signature.");
     }
 
-    let user = await prisma.user.findUnique({
-        where: { walletAddress: normalizedWallet },
-    });
+    let user = await repo.findUser(normalizedWallet);
 
     if (!user) {
-        user = await prisma.user.create({
-            data: { walletAddress: normalizedWallet },
-        });
+        user = await repo.createUser(normalizedWallet);
     }
 
-    await prisma.user.update({
-        where: { walletAddress: normalizedWallet },
-        data: { lastLoginAt: new Date() },
-    });
+    await repo.updateUserLastLogin(normalizedWallet);
 
     const token = signJwt({ walletAddress: normalizedWallet, userId: user.id });
 
-    await prisma.authNonce.delete({
-        where: { walletAddress: normalizedWallet },
-    });
+    await repo.deleteNonce(normalizedWallet);
 
     return { token };
 }
