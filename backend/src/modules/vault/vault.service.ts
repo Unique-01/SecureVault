@@ -1,22 +1,36 @@
-import { prisma } from "@prisma/client.js";
+import { IVaultRepository } from "./vault.interface.js";
+import Decimal from "decimal.js";
 
-export const getVaultHistory = (walletAddress: string) => {
-    return prisma.vaultEvent.findMany({
-        where: { walletAddress },
-        orderBy: { timestamp: "desc" },
-    });
+export const getVaultHistory = async (
+    walletAddress: string,
+    repo: IVaultRepository
+) => {
+    return await repo.getEventsByWallet(walletAddress);
 };
 
-export const getDeposits = (walletAddress: string) => {
-    return prisma.vaultEvent.findMany({
-        where: { walletAddress, eventType: "DEPOSIT" },
-        orderBy: { timestamp: "desc" },
-    });
+export const getDeposits = async (
+    walletAddress: string,
+    repo: IVaultRepository
+) => {
+    return await repo.getEventsByWallet(walletAddress, "DEPOSIT");
 };
 
-export const getWithdrawal = (walletAddress: string) => {
-    return prisma.vaultEvent.findMany({
-        where: { walletAddress, eventType: "WITHDRAWAL" },
-        orderBy: { timestamp: "desc" },
-    });
+export const getWithdrawal = async (
+    walletAddress: string,
+    repo: IVaultRepository
+) => {
+    return await repo.getEventsByWallet(walletAddress, "WITHDRAWAL");
+};
+
+export const getTotalVolume = async (
+    walletAddress: string,
+    repo: IVaultRepository
+) => {
+    const events = await repo.getEventsByWallet(walletAddress);
+
+    const total = events.reduce((acc, event) => {
+        return event.amount ? acc.plus(event.amount) : acc;
+    }, new Decimal(0));
+
+    return total.toFixed(2);
 };
