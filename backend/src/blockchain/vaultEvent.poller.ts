@@ -1,6 +1,7 @@
-import { prisma } from "../prisma/client.js";
-import { publicClient } from "./client.js";
-import { indexSecureVaultEvents } from "./indexSecureVaultEvents.js";
+import { indexSecureVaultEvents } from "./vaultEvents.indexer.js";
+import { IIndexerStateRepository } from "./indexerState.interface.js";
+import { IBlockChainClient } from "./blockchain.interface.js";
+import { IVaultWriter } from "@modules/vault/vault.interface.js";
 
 const INDEXER_ID = "secureVault";
 const DEPLOYMENT_BLOCK = BigInt(process.env.DEPLOYMENT_BLOCK!);
@@ -9,11 +10,15 @@ const MAX_BLOCK_RANGE = 9n;
 
 let isIndexing = false;
 
-export async function startPollingIndexer() {
+export async function startPollingIndexer(
+    indexerState: IIndexerStateRepository,
+    blockchainClient: IBlockChainClient,
+    vaultWriter: IVaultWriter
+) {
     console.log("Starting SecureVault polling indexer...");
 
     // Initial backfill
-    await syncOnce();
+    await syncOnce(indexerState, blockchainClient, vaultWriter);
 
     // Polling loop
     setInterval(async () => {
@@ -22,21 +27,22 @@ export async function startPollingIndexer() {
             return;
         }
 
-        await syncOnce();
+        await syncOnce(indexerState, blockchainClient, vaultWriter);
     }, POLL_INTERVAL);
 }
 
-async function syncOnce() {
+async function syncOnce(
+    indexerState: IIndexerStateRepository,
+    blockchainClient: IBlockChainClient,
+    vaultWriter: IVaultWriter
+) {
     try {
         isIndexing = true;
 
-        const state = await prisma.indexerState.findUnique({
-            where: { id: INDEXER_ID },
-        });
-
+        const state = await indexerState.getState(INDEXER_ID);
         let lastIndexedBlock = state?.lastBlock ?? DEPLOYMENT_BLOCK;
 
-        const latestBlock = await publicClient.getBlockNumber();
+        const latestBlock = await blockchainClient.getBlockNumber();
 
         if (latestBlock <= lastIndexedBlock) {
             console.log("No new blocks to index.");
@@ -52,22 +58,19 @@ async function syncOnce() {
 
             console.log(`Indexing blocks ${fromBlock} → ${toBlock}`);
 
-            await indexSecureVaultEvents(fromBlock, toBlock);
+            await indexSecureVaultEvents(
+                fromBlock,
+                toBlock,
+                blockchainClient,
+                vaultWriter
+            );
 
-            await prisma.indexerState.upsert({
-                where: { id: INDEXER_ID },
-                update: { lastBlock: toBlock },
-                create: {
-                    id: INDEXER_ID,
-                    lastBlock: toBlock,
-                },
-            });
+            await indexerState.setState(INDEXER_ID, toBlock);
 
             lastIndexedBlock = toBlock;
         }
 
         console.log(`Sync complete.`);
-        // const toBlock = latestBlock;
     } catch (error) {
         console.error("Indexer error:", error);
     } finally {

@@ -1,18 +1,13 @@
-import Decimal from "decimal.js";
+import type {
+    VaultEventInput,
+    VaultEventRecord,
+} from "src/types/vaultEvent.types.js";
 
-type DecimalValue = InstanceType<typeof Decimal>;
-
-export interface VaultEventRecord {
-    id: string;
-    walletAddress: string;
-    eventType: string;
-    amount: DecimalValue | null;
-    txHash: string;
-    blockNumber: number;
-    timestamp: Date;
+export interface IVaultWriter {
+    saveVaultEvent(event: VaultEventInput): Promise<void>;
 }
 
-export interface IVaultRepository {
+export interface IVaultReader {
     getEventsByWallet(
         wallet: string,
         eventType?: "DEPOSIT" | "WITHDRAWAL"

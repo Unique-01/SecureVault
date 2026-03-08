@@ -1,13 +1,22 @@
-import { prisma } from "@prisma/client.js";
-import { IVaultRepository, VaultEventRecord } from "./vault.interface.js";
+import { IVaultReader, IVaultWriter } from "./vault.interface.js";
+import type {
+    VaultEventInput,
+    VaultEventRecord,
+} from "src/types/vaultEvent.types.js";
 import Decimal from "decimal.js";
+import { PrismaClient } from "src/generated/prisma/client.js";
 
-export const vaultRepository: IVaultRepository = {
-    async getEventsByWallet(wallet, type): Promise<VaultEventRecord[]> {
-        const events = await prisma.vaultEvent.findMany({
+export class VaultRepository implements IVaultReader, IVaultWriter {
+    constructor(private db: PrismaClient) {}
+
+    async getEventsByWallet(
+        wallet: string,
+        eventType?: "DEPOSIT" | "WITHDRAWAL"
+    ): Promise<VaultEventRecord[]> {
+        const events = await this.db.vaultEvent.findMany({
             where: {
                 walletAddress: wallet,
-                ...(type ? { eventType: type } : {}),
+                ...(eventType ? { eventType: eventType } : {}),
             },
             orderBy: { timestamp: "desc" },
         });
@@ -16,5 +25,20 @@ export const vaultRepository: IVaultRepository = {
             ...event,
             amount: event.amount ? new Decimal(event.amount.toString()) : null,
         }));
-    },
-};
+    }
+
+    async saveVaultEvent(event: VaultEventInput): Promise<void> {
+        await this.db.vaultEvent.upsert({
+            where: { txHash: event.txHash },
+            update: {},
+            create: {
+                walletAddress: event.walletAddress,
+                txHash: event.txHash,
+                blockNumber: event.blockNumber,
+                timestamp: event.timestamp,
+                eventType: event.eventType,
+                amount: event.amount,
+            },
+        });
+    }
+}

@@ -1,30 +1,30 @@
-import { IVaultRepository } from "./vault.interface.js";
+import { IVaultReader } from "./vault.interface.js";
 import Decimal from "decimal.js";
 
 export const getVaultHistory = async (
     walletAddress: string,
-    repo: IVaultRepository
+    repo: IVaultReader
 ) => {
     return await repo.getEventsByWallet(walletAddress);
 };
 
 export const getDeposits = async (
     walletAddress: string,
-    repo: IVaultRepository
+    repo: IVaultReader
 ) => {
     return await repo.getEventsByWallet(walletAddress, "DEPOSIT");
 };
 
 export const getWithdrawal = async (
     walletAddress: string,
-    repo: IVaultRepository
+    repo: IVaultReader
 ) => {
     return await repo.getEventsByWallet(walletAddress, "WITHDRAWAL");
 };
 
 export const getTotalVolume = async (
     walletAddress: string,
-    repo: IVaultRepository
+    repo: IVaultReader
 ) => {
     const events = await repo.getEventsByWallet(walletAddress);
 
