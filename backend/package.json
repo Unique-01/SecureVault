@@ -4,7 +4,7 @@
     "description": "",
     "main": "index.js",
     "scripts": {
-        "test": "vitest run --coverage",
+        "test": "vitest run",
         "dev": "tsx watch src/server.ts",
         "build": "tsc && tsc-alias",
         "start": "node dist/src/server.js"

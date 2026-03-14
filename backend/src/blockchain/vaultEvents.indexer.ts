@@ -3,22 +3,17 @@ import { mapEventType, extractAmount } from "./vaultEvent.mappers.js";
 import { IBlockChainClient } from "./blockchain.interface.js";
 import { IVaultWriter } from "@modules/vault/vault.interface.js";
 
-const VAULT_ADDRESS = process.env.VAULT_ADDRESS as `0x${string}` | undefined;
-
-if (!VAULT_ADDRESS) {
-    throw new Error("VAULT_ADDRESS is not defined in environment variables");
-}
-
 export const indexSecureVaultEvents = async (
     fromBlock: bigint,
     toBlock: bigint,
     blockchainClient: IBlockChainClient,
-    vaultWriter: IVaultWriter
+    vaultWriter: IVaultWriter,
+    vaultAddress: `0x${string}`
 ) => {
     console.log(`Indexing SecureVault Events from block ${fromBlock}`);
 
     const logs = await blockchainClient.getLogs({
-        address: VAULT_ADDRESS,
+        address: vaultAddress,
         events: secureVaultAbi,
         fromBlock,
         toBlock,

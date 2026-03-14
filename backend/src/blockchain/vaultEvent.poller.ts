@@ -4,7 +4,6 @@ import { IBlockChainClient } from "./blockchain.interface.js";
 import { IVaultWriter } from "@modules/vault/vault.interface.js";
 
 const INDEXER_ID = "secureVault";
-const DEPLOYMENT_BLOCK = BigInt(process.env.DEPLOYMENT_BLOCK!);
 const POLL_INTERVAL = 5000; // 5 seconds
 const MAX_BLOCK_RANGE = 9n;
 
@@ -13,12 +12,20 @@ let isIndexing = false;
 export async function startPollingIndexer(
     indexerState: IIndexerStateRepository,
     blockchainClient: IBlockChainClient,
-    vaultWriter: IVaultWriter
+    vaultWriter: IVaultWriter,
+    vaultAddress: `0x${string}`,
+    deploymentBlock: bigint
 ) {
     console.log("Starting SecureVault polling indexer...");
 
     // Initial backfill
-    await syncOnce(indexerState, blockchainClient, vaultWriter);
+    await syncOnce(
+        indexerState,
+        blockchainClient,
+        vaultWriter,
+        vaultAddress,
+        deploymentBlock
+    );
 
     // Polling loop
     setInterval(async () => {
@@ -27,20 +34,28 @@ export async function startPollingIndexer(
             return;
         }
 
-        await syncOnce(indexerState, blockchainClient, vaultWriter);
+        await syncOnce(
+            indexerState,
+            blockchainClient,
+            vaultWriter,
+            vaultAddress,
+            deploymentBlock
+        );
     }, POLL_INTERVAL);
 }
 
 async function syncOnce(
     indexerState: IIndexerStateRepository,
     blockchainClient: IBlockChainClient,
-    vaultWriter: IVaultWriter
+    vaultWriter: IVaultWriter,
+    vaultAddress: `0x${string}`,
+    deploymentBlock: bigint
 ) {
     try {
         isIndexing = true;
 
         const state = await indexerState.getState(INDEXER_ID);
-        let lastIndexedBlock = state?.lastBlock ?? DEPLOYMENT_BLOCK;
+        let lastIndexedBlock = state?.lastBlock ?? deploymentBlock;
 
         const latestBlock = await blockchainClient.getBlockNumber();
 
@@ -62,7 +77,8 @@ async function syncOnce(
                 fromBlock,
                 toBlock,
                 blockchainClient,
-                vaultWriter
+                vaultWriter,
+                vaultAddress
             );
 
             await indexerState.setState(INDEXER_ID, toBlock);
