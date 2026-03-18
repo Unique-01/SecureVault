@@ -27,3 +27,17 @@ export interface IAuthRepository {
 
     deleteNonce(wallet: string): Promise<NonceRecord>;
 }
+
+export type NonceGenerator = () => string;
+
+export type Hex = `0x${string}`;
+
+export type AddressRecoverer = (params: {
+    message: string;
+    signature: Hex;
+}) => Promise<Hex>;
+
+export type JwtSigner = (payload: {
+    walletAddress: string;
+    userId: string;
+}) => string;

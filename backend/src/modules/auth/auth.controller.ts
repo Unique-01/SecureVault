@@ -2,8 +2,11 @@ import { Request, Response } from "express";
 import { getNonceMessage, verifySignature } from "./auth.service.js";
 import { AuthRepository } from "./auth.repository.js";
 import { prisma } from "@prisma/client.js";
+import { generateNonce } from "@utils/nonce.js";
+import { recoverMessageAddress } from "viem";
+import { signJwt } from "@utils/jwt.js";
 
-const authRepo = new AuthRepository(prisma)
+const authRepo = new AuthRepository(prisma);
 
 export async function requestNonce(req: Request, res: Response) {
     try {
@@ -14,7 +17,11 @@ export async function requestNonce(req: Request, res: Response) {
                 .status(400)
                 .json({ message: "Wallet Address is required" });
         }
-        const message = await getNonceMessage(walletAddress, authRepo);
+        const message = await getNonceMessage(
+            walletAddress,
+            authRepo,
+            generateNonce
+        );
         return res.json({ message });
     } catch (error: any) {
         console.error(error.message);
@@ -35,7 +42,9 @@ export const verifyNonce = async (req: Request, res: Response) => {
         const { token } = await verifySignature(
             walletAddress,
             signature,
-            authRepo
+            authRepo,
+            recoverMessageAddress,
+            signJwt
         );
 
         return res.json({ token });

@@ -1,19 +1,24 @@
-import { generateNonce } from "@utils/nonce.js";
 import { createLoginMessage } from "@utils/message.js";
-import { Hex, recoverMessageAddress } from "viem";
-import { signJwt } from "@utils/jwt.js";
-import { IAuthRepository } from "./auth.interface.js";
+import {
+    IAuthRepository,
+    NonceGenerator,
+    AddressRecoverer,
+    JwtSigner,
+    Hex,
+} from "./auth.interface.js";
 
 export async function getNonceMessage(
     walletAddress: string,
-    repo: IAuthRepository
+    repo: IAuthRepository,
+    generateNonce: NonceGenerator,
+    now: Date = new Date()
 ): Promise<string> {
     const normalizedWallet = walletAddress.toLowerCase();
 
-    const nonce = generateNonce(16);
+    const nonce = generateNonce();
 
     // Expires in 5 minutes
-    const expiresAt = new Date(Date.now() + 5 * 60_000);
+    const expiresAt = new Date(now.getTime() + 5 * 60_000);
 
     await repo.upsertNonce(normalizedWallet, nonce, expiresAt);
 
@@ -23,7 +28,10 @@ export async function getNonceMessage(
 export async function verifySignature(
     walletAddress: string,
     signature: string,
-    repo: IAuthRepository
+    repo: IAuthRepository,
+    recoverMessageAddress: AddressRecoverer,
+    signJwt: JwtSigner,
+    now: Date = new Date()
 ): Promise<{ token: string }> {
     const normalizedWallet = walletAddress.toLowerCase();
 
@@ -32,8 +40,6 @@ export async function verifySignature(
     if (!authNonce) {
         throw new Error("Nonce not found. Request a new one");
     }
-
-    const now = new Date();
 
     if (authNonce.expiresAt < now) {
         throw new Error("Nonce is expired. Request a new one");
