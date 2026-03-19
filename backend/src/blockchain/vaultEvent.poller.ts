@@ -4,10 +4,15 @@ import { IBlockChainClient } from "./blockchain.interface.js";
 import { IVaultWriter } from "@modules/vault/vault.interface.js";
 
 const INDEXER_ID = "secureVault";
-const POLL_INTERVAL = 5000; // 5 seconds
+const POLL_INTERVAL = 5000;
 const MAX_BLOCK_RANGE = 9n;
 
 let isIndexing = false;
+let lastIndexerError: string | null = null; // track last error for health endpoint
+
+export function getIndexerHealth() {
+    return { isIndexing, lastIndexerError };
+}
 
 export async function startPollingIndexer(
     indexerState: IIndexerStateRepository,
@@ -19,29 +24,15 @@ export async function startPollingIndexer(
     console.log("Starting SecureVault polling indexer...");
 
     // Initial backfill
-    await syncOnce(
-        indexerState,
-        blockchainClient,
-        vaultWriter,
-        vaultAddress,
-        deploymentBlock
-    );
+    await syncOnce(indexerState, blockchainClient, vaultWriter, vaultAddress, deploymentBlock);
 
-    // Polling loop
-    setInterval(async () => {
-        if (isIndexing) {
-            console.log("Previous indexing still running, skipping...");
-            return;
-        }
+    // Recursive polling — waits for sync to finish before scheduling next run
+    const poll = async () => {
+        await syncOnce(indexerState, blockchainClient, vaultWriter, vaultAddress, deploymentBlock);
+        setTimeout(poll, POLL_INTERVAL);
+    };
 
-        await syncOnce(
-            indexerState,
-            blockchainClient,
-            vaultWriter,
-            vaultAddress,
-            deploymentBlock
-        );
-    }, POLL_INTERVAL);
+    setTimeout(poll, POLL_INTERVAL);
 }
 
 async function syncOnce(
@@ -51,6 +42,11 @@ async function syncOnce(
     vaultAddress: `0x${string}`,
     deploymentBlock: bigint
 ) {
+    if (isIndexing) {
+        console.log("Previous indexing still running, skipping...");
+        return;
+    }
+
     try {
         isIndexing = true;
 
@@ -82,12 +78,13 @@ async function syncOnce(
             );
 
             await indexerState.setState(INDEXER_ID, toBlock);
-
             lastIndexedBlock = toBlock;
         }
 
-        console.log(`Sync complete.`);
+        lastIndexerError = null; // clear error on successful sync
+        console.log("Sync complete.");
     } catch (error) {
+        lastIndexerError = error instanceof Error ? error.message : "Unknown error";
         console.error("Indexer error:", error);
     } finally {
         isIndexing = false;

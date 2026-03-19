@@ -11,7 +11,7 @@ export class VaultRepository implements IVaultReader, IVaultWriter {
 
     async getEventsByWallet(
         wallet: string,
-        eventType?: "DEPOSIT" | "WITHDRAWAL"
+        eventType?: string
     ): Promise<VaultEventRecord[]> {
         const events = await this.db.vaultEvent.findMany({
             where: {
@@ -40,5 +40,39 @@ export class VaultRepository implements IVaultReader, IVaultWriter {
                 amount: event.amount,
             },
         });
+    }
+
+    async getPendingWithdrawal(
+        wallet: string
+    ): Promise<VaultEventRecord | null> {
+        const lastEvent = await this.db.vaultEvent.findFirst({
+            where: {
+                walletAddress: wallet,
+                eventType: {
+                    in: [
+                        "WITHDRAWAL_REQUESTED",
+                        "WITHDRAWAL_MODIFIED",
+                        "WITHDRAWAL_CANCELLED",
+                        "WITHDRAWAL_CLAIMED",
+                    ],
+                },
+            },
+            orderBy: { timestamp: "desc" },
+        });
+
+        if (
+            !lastEvent ||
+            ["WITHDRAWAL_CANCELLED", "WITHDRAWAL_CLAIMED"].includes(
+                lastEvent.eventType
+            )
+        )
+            return null;
+
+        return {
+            ...lastEvent,
+            amount: lastEvent.amount
+                ? new Decimal(lastEvent.amount.toString())
+                : null,
+        };
     }
 }

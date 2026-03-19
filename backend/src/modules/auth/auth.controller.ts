@@ -9,6 +9,15 @@ import { signJwt } from "@utils/jwt.js";
 const authRepo = new AuthRepository(prisma);
 
 export async function requestNonce(req: Request, res: Response) {
+    /* #swagger.tags = ['Auth']
+   #swagger.summary = 'Step 1: Get a cryptographic nonce'
+   #swagger.parameters['body'] = {
+      in: 'body',
+      description: 'The wallet address you want to log in with',
+      schema: { walletAddress: "0x123..." }
+   }
+   #swagger.responses[200] = { schema: { $ref: "#/definitions/AuthNonceResponse" } }
+*/
     try {
         const { walletAddress } = req.body;
 
@@ -30,6 +39,15 @@ export async function requestNonce(req: Request, res: Response) {
 }
 
 export const verifyNonce = async (req: Request, res: Response) => {
+    /* #swagger.tags = ['Auth']
+   #swagger.summary = 'Step 2: Verify signature and get JWT'
+   #swagger.parameters['body'] = {
+      in: 'body',
+      description: 'The signature produced by the wallet',
+      schema: { walletAddress: "0x123...", signature: "0x..." }
+   }
+   #swagger.responses[200] = { schema: { $ref: "#/definitions/AuthVerifyResponse" } }
+*/
     try {
         const { walletAddress, signature } = req.body;
 

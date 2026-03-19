@@ -1,0 +1,407 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "SecureVault API",
+    "description": "Infrastructure for Financial Security",
+    "version": "1.0.0"
+  },
+  "host": "localhost:8000",
+  "basePath": "/",
+  "schemes": [
+    "http"
+  ],
+  "securityDefinitions": {
+    "bearerAuth": {
+      "type": "apiKey",
+      "in": "header",
+      "name": "Authorization"
+    }
+  },
+  "paths": {
+    "/systemStatus/": {
+      "get": {
+        "tags": [
+          "System Status"
+        ],
+        "summary": "Indexer health status",
+        "description": "Returns sync status of the indexer against the latest chain block.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "example": "healthy"
+                },
+                "lastIndexedBlock": {
+                  "type": "string",
+                  "example": "19482031"
+                },
+                "latestChainBlock": {
+                  "type": "string",
+                  "example": "19482035"
+                },
+                "blocksBehind": {
+                  "type": "string",
+                  "example": "4"
+                },
+                "isIndexing": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "lastError": {}
+              },
+              "xml": {
+                "name": "main"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/nonce": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Step 1: Get a cryptographic nonce",
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "description": "The wallet address you want to log in with",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "walletAddress": {
+                  "type": "string",
+                  "example": "0x123..."
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/AuthNonceResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/auth/verify": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Step 2: Verify signature and get JWT",
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "description": "The signature produced by the wallet",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "walletAddress": {
+                  "type": "string",
+                  "example": "0x123..."
+                },
+                "signature": {
+                  "type": "string",
+                  "example": "0x..."
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/AuthVerifyResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/user/me": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/vault/history": {
+      "get": {
+        "tags": [
+          "Vault"
+        ],
+        "summary": "Full Transaction Audit Trail",
+        "description": "Returns every on-chain event (Deposits, Requests, Modifications, Cancellations, Claims) sorted by date.",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/VaultEvent"
+              },
+              "xml": {
+                "name": "main"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/vault/deposits": {
+      "get": {
+        "tags": [
+          "Vault"
+        ],
+        "summary": "Get all deposit events",
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/VaultEvent"
+              },
+              "xml": {
+                "name": "main"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/vault/withdrawals": {
+      "get": {
+        "tags": [
+          "Vault"
+        ],
+        "summary": "Get all successful claims",
+        "description": "Only returns events where funds were successfully withdrawn from the vault after the 24h lock.",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/VaultEvent"
+              },
+              "xml": {
+                "name": "main"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/vault/pendingWithdrawal": {
+      "get": {
+        "tags": [
+          "Vault"
+        ],
+        "summary": "Active Pending Withdrawal",
+        "description": "Checks the current state to see if the user has an active 24-hour lock period running.",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns null if no withdrawal is currently pending.",
+            "schema": {
+              "$ref": "#/definitions/VaultEvent"
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/vault/totalVolume": {
+      "get": {
+        "tags": [
+          "Vault"
+        ],
+        "summary": "Total transaction volume",
+        "description": "Calculates the total transaction volume for the user.",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "total": {
+                  "type": "string",
+                  "example": "1.5"
+                }
+              },
+              "xml": {
+                "name": "main"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "VaultEvent": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "example": "uuid-string-1234"
+        },
+        "walletAddress": {
+          "type": "string",
+          "example": "0x123...abc"
+        },
+        "eventType": {
+          "type": "string",
+          "example": "DEPOSIT"
+        },
+        "amount": {
+          "type": "string",
+          "example": "1.5"
+        },
+        "txHash": {
+          "type": "string",
+          "example": "0xabcdef..."
+        },
+        "blockNumber": {
+          "type": "number",
+          "example": 19482031
+        },
+        "timestamp": {
+          "type": "string",
+          "example": "2024-03-18T12:00:00Z"
+        }
+      }
+    },
+    "AuthNonceResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "example": "Sign this message to login to SecureVault:\nWallet: 0x123\nNonce: dgjhsjsdsd\nExpires At: 2024-01-01T00:00:00.000Z"
+        }
+      }
+    },
+    "AuthVerifyResponse": {
+      "type": "object",
+      "properties": {
+        "token": {
+          "type": "string",
+          "example": "eyJhbGciOiJIUzI1..."
+        }
+      }
+    }
+  }
+}

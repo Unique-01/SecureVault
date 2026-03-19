@@ -10,6 +10,7 @@ export interface IVaultWriter {
 export interface IVaultReader {
     getEventsByWallet(
         wallet: string,
-        eventType?: "DEPOSIT" | "WITHDRAWAL"
+        eventType?: string
     ): Promise<VaultEventRecord[]>;
+    getPendingWithdrawal(wallet: string): Promise<VaultEventRecord | null>;
 }

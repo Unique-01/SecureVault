@@ -19,7 +19,14 @@ export const getWithdrawal = async (
     walletAddress: string,
     repo: IVaultReader
 ) => {
-    return await repo.getEventsByWallet(walletAddress, "WITHDRAWAL");
+    return await repo.getEventsByWallet(walletAddress, "WITHDRAW_EXECUTED");
+};
+
+export const getPendingWithdrawal = async (
+    walletAddress: string,
+    repo: IVaultReader
+) => {
+    return await repo.getPendingWithdrawal(walletAddress);
 };
 
 export const getTotalVolume = async (

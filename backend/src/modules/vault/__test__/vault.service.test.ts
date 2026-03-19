@@ -17,6 +17,7 @@ const walletAddress = "0xabc";
 
 const makeFakeRepo = (events: VaultEventRecord[]) => ({
     getEventsByWallet: async () => events,
+    getPendingWithdrawal: async () => null,
 });
 
 describe("getTotalVolume", () => {
