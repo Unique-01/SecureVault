@@ -1,0 +1,13 @@
+# Database
+DATABASE_URL="" #our postgres password
+POSTGRES_USER="" # Your postgres username
+POSTGRES_PASSWORD="" # Your postgres database url
+
+# App
+PORT=8000
+JWT_SECRET="" # Your JWT secret key
+
+# Blockchain
+RPC_URL="" # Your RPC provider url
+VAULT_ADDRESS="" # Your deployed contract address
+DEPLOYMENT_BLOCK="" # Block Number as at contract deployment
