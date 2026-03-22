@@ -1,4 +1,9 @@
 import swaggerAutogen from "swagger-autogen";
+import dotenv from "dotenv"
+
+dotenv.config()
+
+const isProduction = process.env.NODE_ENV === "production";
 
 const doc = {
     info: {
@@ -6,8 +11,8 @@ const doc = {
         description: "Infrastructure for Financial Security",
         version: "1.0.0",
     },
-    host: "localhost:8000",
-    schemes: ["http"],
+    host: process.env.API_HOST || "localhost:8000",
+    schemes: [isProduction ? "https" : "http"],
     securityDefinitions: {
         bearerAuth: {
             type: "apiKey",

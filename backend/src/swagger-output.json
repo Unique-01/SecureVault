@@ -5,10 +5,10 @@
     "description": "Infrastructure for Financial Security",
     "version": "1.0.0"
   },
-  "host": "localhost:8000",
+  "host": "https://secure-vault.fly.dev/",
   "basePath": "/",
   "schemes": [
-    "http"
+    "https"
   ],
   "securityDefinitions": {
     "bearerAuth": {
