@@ -1,43 +1,38 @@
 import { IVaultReader } from "./vault.interface.js";
 import Decimal from "decimal.js";
 
-export const getVaultHistory = async (
-    walletAddress: string,
-    repo: IVaultReader
-) => {
-    return await repo.getEventsByWallet(walletAddress);
-};
+class VaultService {
+    constructor(private repo: IVaultReader) {}
 
-export const getDeposits = async (
-    walletAddress: string,
-    repo: IVaultReader
-) => {
-    return await repo.getEventsByWallet(walletAddress, "DEPOSIT");
-};
+    private async fetchEvents(wallet: string, type?: string) {
+        return await this.repo.getEventsByWallet(wallet, type);
+    }
 
-export const getWithdrawal = async (
-    walletAddress: string,
-    repo: IVaultReader
-) => {
-    return await repo.getEventsByWallet(walletAddress, "WITHDRAW_EXECUTED");
-};
+    async getVaultHistory(walletAddress: string) {
+        return this.fetchEvents(walletAddress);
+    }
 
-export const getPendingWithdrawal = async (
-    walletAddress: string,
-    repo: IVaultReader
-) => {
-    return await repo.getPendingWithdrawal(walletAddress);
-};
+    async getDeposits(walletAddress: string) {
+        return this.fetchEvents(walletAddress, "DEPOSIT");
+    }
 
-export const getTotalVolume = async (
-    walletAddress: string,
-    repo: IVaultReader
-) => {
-    const events = await repo.getEventsByWallet(walletAddress);
+    async getWithdrawal(walletAddress: string) {
+        return this.fetchEvents(walletAddress, "WITHDRAW_EXECUTED");
+    }
 
-    const total = events.reduce((acc, event) => {
-        return event.amount ? acc.plus(event.amount) : acc;
-    }, new Decimal(0));
+    async getPendingWithdrawal(walletAddress: string) {
+        return this.repo.getPendingWithdrawal(walletAddress);
+    }
 
-    return total.toFixed(2);
-};
+    async getTotalVolume(walletAddress: string) {
+        const events = await this.fetchEvents(walletAddress);
+
+        const total = events.reduce((acc, event) => {
+            return event.amount ? acc.plus(event.amount) : acc;
+        }, new Decimal(0));
+
+        return total.toFixed(2);
+    }
+}
+
+export default VaultService;
