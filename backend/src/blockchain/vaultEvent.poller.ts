@@ -1,4 +1,4 @@
-import { indexSecureVaultEvents } from "./vaultEvents.indexer.js";
+import VaultEventIndexer from "./vaultEvents.indexer.js";
 import { IIndexerStateRepository } from "./indexerState.interface.js";
 import { IBlockChainClient } from "./blockchain.interface.js";
 import { IVaultWriter } from "@modules/vault/vault.interface.js";
@@ -9,9 +9,7 @@ const MAX_BLOCK_RANGE = 9n;
 export class VaultEventPoller {
     constructor(
         private indexerState: IIndexerStateRepository,
-        private blockchainClient: IBlockChainClient,
-        private vaultWriter: IVaultWriter,
-        private vaultAddress: `0x${string}`,
+        private indexer: VaultEventIndexer,
         private deploymentBlock: bigint
     ) {}
 
@@ -48,7 +46,7 @@ export class VaultEventPoller {
             const state = await this.indexerState.getState(INDEXER_ID);
             let lastIndexedBlock = state?.lastBlock ?? this.deploymentBlock;
 
-            const latestBlock = await this.blockchainClient.getBlockNumber();
+            const latestBlock = await this.indexer.latestBlock();
 
             if (latestBlock <= lastIndexedBlock) {
                 console.log("No new blocks to index.");
@@ -64,19 +62,14 @@ export class VaultEventPoller {
 
                 console.log(`Indexing blocks ${fromBlock} → ${toBlock}`);
 
-                await indexSecureVaultEvents(
-                    fromBlock,
-                    toBlock,
-                    this.blockchainClient,
-                    this.vaultWriter,
-                    this.vaultAddress
-                );
+                await this.indexer.indexRange(fromBlock, toBlock);
 
                 await this.indexerState.setState(INDEXER_ID, toBlock);
                 lastIndexedBlock = toBlock;
             }
 
-            this.lastIndexerError = null; // clear error on successful sync
+            this.lastIndexerError = null;
+
             console.log("Sync complete.");
         } catch (error) {
             this.lastIndexerError =
