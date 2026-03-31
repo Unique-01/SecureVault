@@ -6,87 +6,84 @@ import { IVaultWriter } from "@modules/vault/vault.interface.js";
 const INDEXER_ID = "secureVault";
 const POLL_INTERVAL = 5000;
 const MAX_BLOCK_RANGE = 9n;
+export class VaultEventPoller {
+    constructor(
+        private indexerState: IIndexerStateRepository,
+        private blockchainClient: IBlockChainClient,
+        private vaultWriter: IVaultWriter,
+        private vaultAddress: `0x${string}`,
+        private deploymentBlock: bigint
+    ) {}
 
-let isIndexing = false;
-let lastIndexerError: string | null = null; // track last error for health endpoint
+    private isIndexing = false;
+    private lastIndexerError: string | null = null;
 
-export function getIndexerHealth() {
-    return { isIndexing, lastIndexerError };
-}
+    async start(): Promise<void> {
+        await this.syncOnce();
 
-export async function startPollingIndexer(
-    indexerState: IIndexerStateRepository,
-    blockchainClient: IBlockChainClient,
-    vaultWriter: IVaultWriter,
-    vaultAddress: `0x${string}`,
-    deploymentBlock: bigint
-) {
-    console.log("Starting SecureVault polling indexer...");
+        const poll = async () => {
+            await this.syncOnce();
+            setTimeout(poll, POLL_INTERVAL);
+        };
 
-    // Initial backfill
-    await syncOnce(indexerState, blockchainClient, vaultWriter, vaultAddress, deploymentBlock);
-
-    // Recursive polling — waits for sync to finish before scheduling next run
-    const poll = async () => {
-        await syncOnce(indexerState, blockchainClient, vaultWriter, vaultAddress, deploymentBlock);
         setTimeout(poll, POLL_INTERVAL);
-    };
-
-    setTimeout(poll, POLL_INTERVAL);
-}
-
-async function syncOnce(
-    indexerState: IIndexerStateRepository,
-    blockchainClient: IBlockChainClient,
-    vaultWriter: IVaultWriter,
-    vaultAddress: `0x${string}`,
-    deploymentBlock: bigint
-) {
-    if (isIndexing) {
-        console.log("Previous indexing still running, skipping...");
-        return;
     }
 
-    try {
-        isIndexing = true;
+    getHealth() {
+        return {
+            isIndexing: this.isIndexing,
+            lastIndexerError: this.lastIndexerError,
+        };
+    }
 
-        const state = await indexerState.getState(INDEXER_ID);
-        let lastIndexedBlock = state?.lastBlock ?? deploymentBlock;
-
-        const latestBlock = await blockchainClient.getBlockNumber();
-
-        if (latestBlock <= lastIndexedBlock) {
-            console.log("No new blocks to index.");
+    private async syncOnce(): Promise<void> {
+        if (this.isIndexing) {
+            console.log("Previous indexing still running, skipping...");
             return;
         }
 
-        while (lastIndexedBlock < latestBlock) {
-            const fromBlock = lastIndexedBlock + 1n;
-            const toBlock =
-                fromBlock + MAX_BLOCK_RANGE > latestBlock
-                    ? latestBlock
-                    : fromBlock + MAX_BLOCK_RANGE;
+        try {
+            this.isIndexing = true;
 
-            console.log(`Indexing blocks ${fromBlock} → ${toBlock}`);
+            const state = await this.indexerState.getState(INDEXER_ID);
+            let lastIndexedBlock = state?.lastBlock ?? this.deploymentBlock;
 
-            await indexSecureVaultEvents(
-                fromBlock,
-                toBlock,
-                blockchainClient,
-                vaultWriter,
-                vaultAddress
-            );
+            const latestBlock = await this.blockchainClient.getBlockNumber();
 
-            await indexerState.setState(INDEXER_ID, toBlock);
-            lastIndexedBlock = toBlock;
+            if (latestBlock <= lastIndexedBlock) {
+                console.log("No new blocks to index.");
+                return;
+            }
+
+            while (lastIndexedBlock < latestBlock) {
+                const fromBlock = lastIndexedBlock + 1n;
+                const toBlock =
+                    fromBlock + MAX_BLOCK_RANGE > latestBlock
+                        ? latestBlock
+                        : fromBlock + MAX_BLOCK_RANGE;
+
+                console.log(`Indexing blocks ${fromBlock} → ${toBlock}`);
+
+                await indexSecureVaultEvents(
+                    fromBlock,
+                    toBlock,
+                    this.blockchainClient,
+                    this.vaultWriter,
+                    this.vaultAddress
+                );
+
+                await this.indexerState.setState(INDEXER_ID, toBlock);
+                lastIndexedBlock = toBlock;
+            }
+
+            this.lastIndexerError = null; // clear error on successful sync
+            console.log("Sync complete.");
+        } catch (error) {
+            this.lastIndexerError =
+                error instanceof Error ? error.message : "Unknown error";
+            console.error("Indexer error:", error);
+        } finally {
+            this.isIndexing = false;
         }
-
-        lastIndexerError = null; // clear error on successful sync
-        console.log("Sync complete.");
-    } catch (error) {
-        lastIndexerError = error instanceof Error ? error.message : "Unknown error";
-        console.error("Indexer error:", error);
-    } finally {
-        isIndexing = false;
     }
 }

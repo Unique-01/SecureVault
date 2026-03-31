@@ -10,3 +10,10 @@ export interface IBlockChainClient {
     getBlock(params: { blockNumber: bigint }): Promise<{ timestamp: bigint }>;
     getBlockNumber(): Promise<bigint>;
 }
+
+export interface IPollerHealth {
+    getHealth(): {
+        isIndexing: boolean;
+        lastIndexerError: string | null;
+    };
+}

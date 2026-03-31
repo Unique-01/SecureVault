@@ -1,5 +1,5 @@
 import { VaultRepository } from "@modules/vault/vault.repository.js";
-import { startPollingIndexer } from "./vaultEvent.poller.js";
+import { VaultEventPoller } from "./vaultEvent.poller.js";
 import { IndexerStateRepository } from "./indexerState.repository.js";
 import { publicClient } from "./client.js";
 import { prisma } from "@prisma/client.js";
@@ -11,15 +11,18 @@ if (!VAULT_ADDRESS) {
 }
 const DEPLOYMENT_BLOCK = BigInt(process.env.DEPLOYMENT_BLOCK!);
 
-export const startIndexer = () => {
+// bootstrap.ts
+export const poller = (() => {
     const vaultWriter = new VaultRepository(prisma);
     const indexerStateRepo = new IndexerStateRepository(prisma);
 
-    return startPollingIndexer(
+    return new VaultEventPoller(
         indexerStateRepo,
         publicClient,
         vaultWriter,
         VAULT_ADDRESS,
         DEPLOYMENT_BLOCK
     );
-};
+})();
+
+export const startIndexer = () => poller.start();

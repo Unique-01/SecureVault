@@ -1,11 +1,12 @@
 import { Request, Response } from "express";
-import { getIndexerHealth } from "./blockchain/vaultEvent.poller.js"; // matches your tree
+import { IPollerHealth } from "./blockchain/blockchain.interface.js";
 import { IIndexerStateRepository } from "./blockchain/indexerState.interface.js";
 import { IBlockChainClient } from "./blockchain/blockchain.interface.js";
 
 export const systemStatusController = (
     indexerState: IIndexerStateRepository,
-    blockchainClient: IBlockChainClient
+    blockchainClient: IBlockChainClient,
+    poller: IPollerHealth
 ) => {
     return async (req: Request, res: Response) => {
         // #swagger.tags = ['System Status']
@@ -23,7 +24,7 @@ export const systemStatusController = (
         } */
         const state = await indexerState.getState("secureVault");
         const latestBlock = await blockchainClient.getBlockNumber();
-        const { isIndexing, lastIndexerError } = getIndexerHealth();
+        const { isIndexing, lastIndexerError } = poller.getHealth();
         const lag = latestBlock - (state?.lastBlock ?? 0n);
 
         return res.json({

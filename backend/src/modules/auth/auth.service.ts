@@ -1,6 +1,7 @@
 import { createLoginMessage } from "@utils/message.js";
 import {
-    IAuthRepository,
+    INonceWriter,
+    ISignatureVerifier,
     NonceGenerator,
     AddressRecoverer,
     JwtSigner,
@@ -9,7 +10,7 @@ import {
 
 export async function getNonceMessage(
     walletAddress: string,
-    repo: IAuthRepository,
+    repo: INonceWriter,
     generateNonce: NonceGenerator,
     now: Date = new Date()
 ): Promise<string> {
@@ -28,7 +29,7 @@ export async function getNonceMessage(
 export async function verifySignature(
     walletAddress: string,
     signature: string,
-    repo: IAuthRepository,
+    repo: ISignatureVerifier,
     recoverMessageAddress: AddressRecoverer,
     signJwt: JwtSigner,
     now: Date = new Date()

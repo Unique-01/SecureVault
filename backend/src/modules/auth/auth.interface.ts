@@ -10,13 +10,15 @@ export interface UserRecord {
     lastLoginAt: Date | null;
 }
 
-export interface IAuthRepository {
+export interface INonceWriter {
     upsertNonce(
         wallet: string,
         nonce: string,
         expiresAt: Date
     ): Promise<NonceRecord>;
+}
 
+export interface ISignatureVerifier {
     findNonce(wallet: string): Promise<NonceRecord | null>;
 
     findUser(wallet: string): Promise<UserRecord | null>;

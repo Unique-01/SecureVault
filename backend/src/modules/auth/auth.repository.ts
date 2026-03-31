@@ -1,7 +1,7 @@
-import { IAuthRepository } from "./auth.interface.js";
+import { INonceWriter, ISignatureVerifier } from "./auth.interface.js";
 import { PrismaClient } from "src/generated/prisma/client.js";
 
-export class AuthRepository implements IAuthRepository {
+export class AuthRepository implements INonceWriter, ISignatureVerifier {
     constructor(private db: PrismaClient) {}
 
     async upsertNonce(wallet: string, nonce: string, expiresAt: Date) {

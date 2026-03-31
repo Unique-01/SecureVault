@@ -2,11 +2,10 @@ import { describe, it, expect, vi } from "vitest";
 import { getNonceMessage, verifySignature } from "../auth.service.js";
 import type {
     AddressRecoverer,
-    IAuthRepository,
+    INonceWriter,
+    ISignatureVerifier,
     JwtSigner,
     NonceGenerator,
-    NonceRecord,
-    UserRecord,
 } from "../auth.interface.js";
 import { createLoginMessage } from "@utils/message.js";
 
@@ -18,8 +17,12 @@ const FAKE_SIGNATURE = "fake.signature";
 const FAKE_NOW = new Date("2024-01-01T00:00:00.000Z");
 const FUTURE_DATE = new Date(FAKE_NOW.getTime() + 5 * 60_000);
 
-const makeRepo = (overrides = {}): IAuthRepository => ({
+const makeNonceWriter = (overrides = {}): INonceWriter => ({
     upsertNonce: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+});
+
+const makeSignatureVerifier = (overrides = {}): ISignatureVerifier => ({
     findNonce: vi.fn().mockResolvedValue({
         walletAddress: FAKE_WALLET_NORMALIZED,
         nonce: FAKE_NONCE,
@@ -49,7 +52,7 @@ describe("getNonceMessage", () => {
     it("should return a login message", async () => {
         const result = await getNonceMessage(
             FAKE_WALLET_NORMALIZED,
-            makeRepo(),
+            makeNonceWriter(),
             makeNonceGenerator(),
             FAKE_NOW
         );
@@ -66,7 +69,7 @@ describe("getNonceMessage", () => {
     });
 
     it("should call upsertNonce with normalized wallet Address and correct nonce", async () => {
-        const repo = makeRepo();
+        const repo = makeNonceWriter();
 
         await getNonceMessage(FAKE_WALLET, repo, makeNonceGenerator());
 
@@ -79,8 +82,8 @@ describe("getNonceMessage", () => {
 });
 
 describe("verifyMessage", () => {
-    it("should return the correct token on success", async () => {
-        const repo = makeRepo();
+    it("should delete nonce and return the correct token on success", async () => {
+        const repo = makeSignatureVerifier();
         const result = await verifySignature(
             FAKE_WALLET,
             FAKE_SIGNATURE,
@@ -90,17 +93,31 @@ describe("verifyMessage", () => {
             FAKE_NOW
         );
 
-        expect(repo.updateUserLastLogin).toHaveBeenCalledExactlyOnceWith(
-            FAKE_WALLET_NORMALIZED
-        );
+        expect(result.token).toBe(FAKE_TOKEN);
+
         expect(repo.deleteNonce).toHaveBeenCalledExactlyOnceWith(
             FAKE_WALLET_NORMALIZED
         );
-        expect(result.token).toBe(FAKE_TOKEN);
+    });
+    it("should update user last login on success", async () => {
+        const repo = makeSignatureVerifier();
+        await verifySignature(
+            FAKE_WALLET,
+            FAKE_SIGNATURE,
+            repo,
+            makeAddressRecoverer(),
+            makeJwtSigner(),
+            FAKE_NOW
+        );
+        expect(repo.updateUserLastLogin).toHaveBeenCalledExactlyOnceWith(
+            FAKE_WALLET_NORMALIZED
+        );
     });
 
     it("should throw error if nonce does not exist in db", async () => {
-        const repo = makeRepo({ findNonce: vi.fn().mockResolvedValue(null) });
+        const repo = makeSignatureVerifier({
+            findNonce: vi.fn().mockResolvedValue(null),
+        });
 
         await expect(
             verifySignature(
@@ -117,7 +134,7 @@ describe("verifyMessage", () => {
     it("Should throw error if nonce is expired", async () => {
         const expired_date = new Date(FAKE_NOW.getTime() - 10 * 60_000);
 
-        const repo = makeRepo({
+        const repo = makeSignatureVerifier({
             findNonce: vi.fn().mockResolvedValue({
                 walletAddress: FAKE_WALLET_NORMALIZED,
                 nonce: FAKE_NONCE,
@@ -138,7 +155,7 @@ describe("verifyMessage", () => {
     });
 
     it("should not create user if user already exists", async () => {
-        const repo = makeRepo({
+        const repo = makeSignatureVerifier({
             findUser: vi.fn().mockResolvedValue({
                 walletAddress: FAKE_WALLET_NORMALIZED,
                 id: "user1",
@@ -159,7 +176,7 @@ describe("verifyMessage", () => {
     });
 
     it("should create user if user does not exist", async () => {
-        const repo = makeRepo();
+        const repo = makeSignatureVerifier();
 
         await verifySignature(
             FAKE_WALLET,
@@ -174,7 +191,7 @@ describe("verifyMessage", () => {
     });
 
     it("should throw error of recovered wallet does not match normalized wallet", async () => {
-        const repo = makeRepo();
+        const repo = makeSignatureVerifier();
         const random_wallet = "0xRandomWallet";
 
         await expect(
