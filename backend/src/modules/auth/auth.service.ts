@@ -48,13 +48,7 @@ class AuthService {
             normalizedWallet
         );
 
-        let user = await this.userService.getUser(normalizedWallet);
-
-        if (!user) {
-            user = await this.userService.createUser(normalizedWallet);
-        }
-
-        await this.userService.updateUserLastLogin(normalizedWallet);
+        const user = await this.userService.identifyUser(normalizedWallet);
 
         const token = await this.tokenService.sign({
             walletAddress: normalizedWallet,

@@ -2,7 +2,7 @@ import { Hex, recoverMessageAddress } from "viem";
 import { ISignatureService } from "./signature.interface.js";
 import { InvalidSignatureError } from "./errors/SignatureErrors.js";
 
-class EvmSignatureService implements ISignatureService {
+export class EvmSignatureService implements ISignatureService {
     async verifyWalletSignature(
         message: string,
         signature: string,
