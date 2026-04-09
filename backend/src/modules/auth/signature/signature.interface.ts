@@ -1,9 +1,9 @@
 export type Hex = `0x${string}`;
 
 export interface ISignatureService {
-    confirmWalletSignature(
+    verifyWalletSignature(
         message: string,
-        signature: Hex,
+        signature: string,
         expectedWallet: string
     ): Promise<void>;
 }

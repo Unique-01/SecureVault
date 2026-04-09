@@ -42,16 +42,7 @@ class AuthService {
             nonceRecord.expiresAt.toISOString()
         );
 
-        // const recoveredWallet = await this.recoverMessageAddress({
-        //     message,
-        //     signature: signature as Hex,
-        // });
-
-        // if (recoveredWallet.toLowerCase() !== normalizedWallet) {
-        //     throw new Error("Invalid signature.");
-        // }
-
-        await this.signatureService.confirmWalletSignature(
+        await this.signatureService.verifyWalletSignature(
             message,
             signature,
             normalizedWallet
