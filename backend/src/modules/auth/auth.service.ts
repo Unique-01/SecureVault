@@ -1,87 +1,93 @@
 import { createLoginMessage } from "@utils/message.js";
-import {
-    INonceWriter,
-    ISignatureVerifier,
-    NonceGenerator,
-    AddressRecoverer,
-    JwtSigner,
-    Hex,
-} from "./auth.interface.js";
+import { INonceVerifier, INonceWriter } from "./nonce/nonce.interface.js";
+import { ISignatureService, Hex } from "./signature/signature.interface.js";
+import { IUserService } from "./user/user.interface.js";
+import { ITokenService } from "src/common/token/token.interface.js";
 
 class AuthService {
     constructor(
-        private writer: INonceWriter,
-        private verifier: ISignatureVerifier,
-        private generateNonce: NonceGenerator,
-        private recoverMessageAddress: AddressRecoverer,
-        private signJwt: JwtSigner
+        private nonceWriter: INonceWriter,
+        private nonceVerifier: INonceVerifier,
+        private signatureService: ISignatureService,
+        private userService: IUserService,
+        private tokenService: ITokenService
     ) {}
 
-    async getNonceMessage(
-        walletAddress: string,
-        now: Date = new Date()
-    ): Promise<string> {
+    async getNonceMessage(walletAddress: string): Promise<string> {
         const normalizedWallet = walletAddress.toLowerCase();
 
-        const nonce = this.generateNonce();
+        // const nonce = this.generateNonce();
 
-        const expiresAt = new Date(now.getTime() + 5 * 60_000);
+        // const expiresAt = new Date(now.getTime() + 5 * 60_000);
 
-        await this.writer.upsertNonce(normalizedWallet, nonce, expiresAt);
+        // await this.writer.upsertNonce(normalizedWallet, nonce, expiresAt);
+
+        const nonceRecord = await this.nonceWriter.generateNonce(
+            normalizedWallet
+        );
 
         return createLoginMessage(
             normalizedWallet,
-            nonce,
-            expiresAt.toISOString()
+            nonceRecord.nonce,
+            nonceRecord.expiresAt.toISOString()
         );
     }
 
     async verifySignature(
         walletAddress: string,
-        signature: string,
-        now: Date = new Date()
+        signature: Hex
     ): Promise<{ token: string }> {
         const normalizedWallet = walletAddress.toLowerCase();
 
-        const authNonce = await this.verifier.findNonce(normalizedWallet);
+        // const authNonce = await this.verifier.findNonce(normalizedWallet);
 
-        if (!authNonce) {
-            throw new Error("Nonce not found. Request a new one");
-        }
+        // if (!authNonce) {
+        //     throw new Error("Nonce not found. Request a new one");
+        // }
 
-        if (authNonce.expiresAt < now) {
-            throw new Error("Nonce is expired. Request a new one");
-        }
+        // if (authNonce.expiresAt < now) {
+        //     throw new Error("Nonce is expired. Request a new one");
+        // }
+
+        const nonceRecord = await this.nonceVerifier.findAndValidateNonce(
+            normalizedWallet
+        );
 
         const message = createLoginMessage(
             normalizedWallet,
-            authNonce.nonce,
-            authNonce.expiresAt.toISOString()
+            nonceRecord.nonce,
+            nonceRecord.expiresAt.toISOString()
         );
 
-        const recoveredWallet = await this.recoverMessageAddress({
+        // const recoveredWallet = await this.recoverMessageAddress({
+        //     message,
+        //     signature: signature as Hex,
+        // });
+
+        // if (recoveredWallet.toLowerCase() !== normalizedWallet) {
+        //     throw new Error("Invalid signature.");
+        // }
+
+        await this.signatureService.confirmWalletSignature(
             message,
-            signature: signature as Hex,
-        });
+            signature,
+            normalizedWallet
+        );
 
-        if (recoveredWallet.toLowerCase() !== normalizedWallet) {
-            throw new Error("Invalid signature.");
-        }
-
-        let user = await this.verifier.findUser(normalizedWallet);
+        let user = await this.userService.getUser(normalizedWallet);
 
         if (!user) {
-            user = await this.verifier.createUser(normalizedWallet);
+            user = await this.userService.createUser(normalizedWallet);
         }
 
-        await this.verifier.updateUserLastLogin(normalizedWallet);
+        await this.userService.updateUserLastLogin(normalizedWallet);
 
-        const token = this.signJwt({
+        const token = await this.tokenService.sign({
             walletAddress: normalizedWallet,
             userId: user.id,
         });
 
-        await this.verifier.deleteNonce(normalizedWallet);
+        await this.nonceVerifier.deleteNonce(normalizedWallet);
 
         return { token };
     }

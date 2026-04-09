@@ -25,13 +25,7 @@ class VaultService {
     }
 
     async getTotalVolume(walletAddress: string) {
-        const events = await this.fetchEvents(walletAddress);
-
-        const total = events.reduce((acc, event) => {
-            return event.amount ? acc.plus(event.amount) : acc;
-        }, new Decimal(0));
-
-        return total.toFixed(2);
+        return this.repo.getTotalVolume(walletAddress);
     }
 }
 

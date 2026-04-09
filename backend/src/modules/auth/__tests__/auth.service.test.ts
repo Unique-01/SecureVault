@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { getNonceMessage, verifySignature } from "../auth.service.js";
+import AuthService from "../auth.service.js";
 import type {
     AddressRecoverer,
     INonceWriter,
@@ -50,6 +50,8 @@ const makeJwtSigner = (): JwtSigner => vi.fn().mockReturnValue(FAKE_TOKEN);
 
 describe("getNonceMessage", () => {
     it("should return a login message", async () => {
+
+        const authService = new AuthService()
         const result = await getNonceMessage(
             FAKE_WALLET_NORMALIZED,
             makeNonceWriter(),

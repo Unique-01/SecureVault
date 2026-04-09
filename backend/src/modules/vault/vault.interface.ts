@@ -13,4 +13,5 @@ export interface IVaultReader {
         eventType?: string
     ): Promise<VaultEventRecord[]>;
     getPendingWithdrawal(wallet: string): Promise<VaultEventRecord | null>;
+    getTotalVolume(wallet: string): Promise<string>;
 }

@@ -75,4 +75,17 @@ export class VaultRepository implements IVaultReader, IVaultWriter {
                 : null,
         };
     }
+    async getTotalVolume(wallet: string): Promise<string> {
+        const aggregate = await this.db.vaultEvent.aggregate({
+            _sum: {
+                amount: true,
+            },
+            where: {
+                walletAddress: wallet,
+                eventType: { in: ["DEPOSIT", "WITHDRAW_EXECUTED"] },
+            },
+        });
+
+        return new Decimal(aggregate._sum.amount?.toString() || "0").toFixed(2);
+    }
 }
