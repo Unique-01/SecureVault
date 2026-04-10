@@ -1,5 +1,9 @@
 import { Request, Response } from "express";
 import AuthService from "./auth.service.js";
+import {
+    WalletAndSignatureRequiredError,
+    WalletRequiredError,
+} from "./errors/authError.js";
 
 class AuthController {
     constructor(private authService: AuthService) {}
@@ -14,25 +18,15 @@ class AuthController {
             }
             #swagger.responses[200] = { schema: { $ref: "#/definitions/AuthNonceResponse" } }
         */
+        const { walletAddress } = req.body;
 
-        try {
-            const { walletAddress } = req.body;
-
-            if (!walletAddress) {
-                return res
-                    .status(400)
-                    .json({ message: "Wallet Address is required" });
-            }
-
-            const message = await this.authService.getNonceMessage(
-                walletAddress
-            );
-
-            return res.json({ message });
-        } catch (error: any) {
-            console.error(error.message);
-            return res.status(500).json({ message: "Internal server error" });
+        if (!walletAddress) {
+            throw new WalletRequiredError();
         }
+
+        const message = await this.authService.getNonceMessage(walletAddress);
+
+        return res.json({ message });
     };
 
     verifyNonce = async (req: Request, res: Response) => {
@@ -45,25 +39,19 @@ class AuthController {
             }
             #swagger.responses[200] = { schema: { $ref: "#/definitions/AuthVerifyResponse" } }
         */
-        try {
-            const { walletAddress, signature } = req.body;
 
-            if (!walletAddress || !signature) {
-                return res.status(400).json({
-                    message: "Wallet address and signature are required",
-                });
-            }
+        const { walletAddress, signature } = req.body;
 
-            const { token } = await this.authService.verifySignature(
-                walletAddress,
-                signature
-            );
-
-            return res.json({ token });
-        } catch (error: any) {
-            console.error(error.message);
-            return res.status(500).json({ message: error.message });
+        if (!walletAddress || !signature) {
+            throw new WalletAndSignatureRequiredError();
         }
+
+        const { token } = await this.authService.verifySignature(
+            walletAddress,
+            signature
+        );
+
+        return res.json({ token });
     };
 }
 

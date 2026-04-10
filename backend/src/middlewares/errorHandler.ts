@@ -8,7 +8,9 @@ export function errorHandler(
     next: NextFunction
 ) {
     if (err instanceof AppError) {
-        return res.status(err.status).json({ error: err.message });
+        return res
+            .status(err.status)
+            .json({ status: "error", message: err.message });
     }
 
     console.error(err); // log unexpected errors

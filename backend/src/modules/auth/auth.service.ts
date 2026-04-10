@@ -2,7 +2,7 @@ import { createLoginMessage } from "@utils/message.js";
 import { INonceService } from "./nonce/nonce.interface.js";
 import { ISignatureService, Hex } from "./signature/signature.interface.js";
 import { IUserService } from "./user/user.interface.js";
-import { ITokenService } from "src/common/token/token.interface.js";
+import { ITokenService } from "src/common/token/interface/token.interface.js";
 
 class AuthService {
     constructor(

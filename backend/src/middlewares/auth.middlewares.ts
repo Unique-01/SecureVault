@@ -1,25 +1,26 @@
 import { Request, Response, NextFunction } from "express";
-import { verifyJwt } from "@utils/jwt.js";
+import {
+    ITokenService,
+    TokenPayload,
+} from "src/common/token/interface/token.interface.js";
+import { InvalidTokenError } from "src/common/token/errors/tokenErrors.js";
 
-export const requireAuth = (
-    req: Request,
-    res: Response,
-    next: NextFunction
-) => {
-    const authHeader = req.headers.authorization;
+const authMiddleware =
+    (tokenService: ITokenService) =>
+    async (req: Request, res: Response, next: NextFunction) => {
+        const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        return res.status(401).json({ message: "Unauthorized" });
-    }
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            throw new InvalidTokenError();
+        }
 
-    const token = authHeader.split(" ")[1];
+        const token = authHeader.split(" ")[1];
 
-    try {
-        const payload = verifyJwt(token);
+        const payload: TokenPayload = await tokenService.verify(token);
+
         req.user = payload;
+
         next();
-    } catch (error) {
-        console.error(error);
-        return res.status(401).json({ message: "Invalid or expired token" });
-    }
-};
+    };
+
+export default authMiddleware;

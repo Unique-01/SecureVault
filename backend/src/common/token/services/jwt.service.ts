@@ -1,6 +1,8 @@
-import { ITokenService, TokenPayload } from "./token.interface.js";
-import jwt, { TokenExpiredError, JsonWebTokenError } from "jsonwebtoken";
-import { InvalidTokenError, ExpiredTokenError } from "./errors/tokenErrors.js";
+import { ITokenService, TokenPayload } from "../interface/token.interface.js";
+import jwt from "jsonwebtoken";
+import { InvalidTokenError, ExpiredTokenError } from "../errors/tokenErrors.js";
+
+const { TokenExpiredError, JsonWebTokenError } = jwt;
 
 class JwtService implements ITokenService {
     constructor(
