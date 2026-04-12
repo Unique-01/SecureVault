@@ -20,7 +20,7 @@ class AuthController {
         */
         const { walletAddress } = req.body;
 
-        if (!walletAddress) {
+        if (!walletAddress || !walletAddress.trim()) {
             throw new WalletRequiredError();
         }
 

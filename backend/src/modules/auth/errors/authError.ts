@@ -11,3 +11,4 @@ export class WalletAndSignatureRequiredError extends AppError {
         super(400, "Wallet address and signature are required");
     }
 }
+

@@ -8,11 +8,16 @@ import {
     NonceIsExpiredError,
     NonceNotFoundError,
 } from "./errors/NonceErrors.js";
+import { WalletRequiredError } from "../errors/authError.js";
 
 class NonceService implements INonceService {
     constructor(private nonceRepo: INonceRepository) {}
 
     async generateNonce(walletAddress: string): Promise<NonceRecord> {
+        if (!walletAddress?.trim()) {
+            throw new WalletRequiredError();
+        }
+
         const nonce = generateNonce();
         const expiresAt = new Date(Date.now() + 5 * 60_000);
 
@@ -24,6 +29,10 @@ class NonceService implements INonceService {
     }
 
     async getValidNonce(walletAddress: string): Promise<NonceRecord> {
+        if (!walletAddress?.trim()) {
+            throw new WalletRequiredError();
+        }
+
         const nonce = await this.nonceRepo.retrieveNonce(walletAddress);
         const now = new Date(Date.now());
 
@@ -38,6 +47,10 @@ class NonceService implements INonceService {
     }
 
     async deleteNonce(walletAddress: string): Promise<void> {
+        if (!walletAddress?.trim()) {
+            throw new WalletRequiredError();
+        }
+        
         return await this.nonceRepo.deleteNonce(walletAddress);
     }
 }
