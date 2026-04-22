@@ -1,210 +1,131 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, vi, it, expect, beforeEach } from "vitest";
+import { INonceService, NonceRecord } from "../nonce/nonce.interface.js";
+import { ISignatureService } from "../signature/signature.interface.js";
+import { ITokenService } from "src/common/token/interface/token.interface.js";
+import { IUserService } from "../user/user.interface.js";
 import AuthService from "../auth.service.js";
-import type {
-    AddressRecoverer,
-    INonceWriter,
-    ISignatureVerifier,
-    JwtSigner,
-    NonceGenerator,
-} from "../auth.interface.js";
 import { createLoginMessage } from "@utils/message.js";
 
-const FAKE_WALLET = "0xABC123";
-const FAKE_WALLET_NORMALIZED = "0xabc123";
-const FAKE_NONCE = "abc123nonce";
-const FAKE_TOKEN = "fake.jwt.token";
-const FAKE_SIGNATURE = "fake.signature";
-const FAKE_NOW = new Date("2024-01-01T00:00:00.000Z");
-const FUTURE_DATE = new Date(FAKE_NOW.getTime() + 5 * 60_000);
+describe("AuthService", () => {
+    const mockNonceService: INonceService = {
+        generateNonce: vi.fn(),
+        getValidNonce: vi.fn(),
+        deleteNonce: vi.fn(),
+    };
 
-const makeNonceWriter = (overrides = {}): INonceWriter => ({
-    upsertNonce: vi.fn().mockResolvedValue(undefined),
-    ...overrides,
-});
+    const mockSignatureService: ISignatureService = {
+        verifyWalletSignature: vi.fn(),
+    };
 
-const makeSignatureVerifier = (overrides = {}): ISignatureVerifier => ({
-    findNonce: vi.fn().mockResolvedValue({
-        walletAddress: FAKE_WALLET_NORMALIZED,
-        nonce: FAKE_NONCE,
-        expiresAt: FUTURE_DATE,
-    }),
-    findUser: vi.fn().mockResolvedValue(null),
-    createUser: vi.fn().mockResolvedValue({
-        id: "user1",
-        walletAddress: FAKE_WALLET,
-        lastLoginAt: null,
-    }),
-    updateUserLastLogin: vi.fn().mockResolvedValue(undefined),
-    deleteNonce: vi.fn().mockResolvedValue(undefined),
-    ...overrides,
-});
+    const mockUserService: IUserService = {
+        identifyUser: vi.fn(),
+    };
 
-const makeNonceGenerator = (): NonceGenerator =>
-    vi.fn().mockReturnValue(FAKE_NONCE);
+    const mockTokenService: ITokenService = {
+        sign: vi.fn(),
+        verify: vi.fn(),
+    };
 
-const makeAddressRecoverer = (
-    address = FAKE_WALLET_NORMALIZED
-): AddressRecoverer => vi.fn().mockResolvedValue(address);
+    const rawWallet = "0xABC";
+    const normalizedWallet = "0xabc";
+    const mockExpiry = new Date("2026-01-01T12:00:00Z");
+    const mockNonce = "abc123";
+    const mockToken = "jwt-token";
+    const mockSignature = "0xSignature";
 
-const makeJwtSigner = (): JwtSigner => vi.fn().mockReturnValue(FAKE_TOKEN);
+    const mockNonceRecord: NonceRecord = {
+        walletAddress: normalizedWallet,
+        nonce: mockNonce,
+        expiresAt: mockExpiry,
+    };
+    const mockMessage = createLoginMessage(
+        normalizedWallet,
+        mockNonce,
+        mockExpiry.toISOString()
+    );
 
-describe("getNonceMessage", () => {
-    it("should return a login message", async () => {
+    let authService: AuthService;
 
-        const authService = new AuthService()
-        const result = await getNonceMessage(
-            FAKE_WALLET_NORMALIZED,
-            makeNonceWriter(),
-            makeNonceGenerator(),
-            FAKE_NOW
-        );
+    beforeEach(() => {
+        vi.clearAllMocks();
 
-        const expectedExpiresAt = new Date(FAKE_NOW.getTime() + 5 * 60_000);
-
-        const expectedResult = createLoginMessage(
-            FAKE_WALLET_NORMALIZED,
-            FAKE_NONCE,
-            expectedExpiresAt.toISOString()
-        );
-
-        expect(result).toBe(expectedResult);
-    });
-
-    it("should call upsertNonce with normalized wallet Address and correct nonce", async () => {
-        const repo = makeNonceWriter();
-
-        await getNonceMessage(FAKE_WALLET, repo, makeNonceGenerator());
-
-        expect(repo.upsertNonce).toHaveBeenCalledWith(
-            FAKE_WALLET_NORMALIZED,
-            FAKE_NONCE,
-            expect.anything()
-        );
-    });
-});
-
-describe("verifyMessage", () => {
-    it("should delete nonce and return the correct token on success", async () => {
-        const repo = makeSignatureVerifier();
-        const result = await verifySignature(
-            FAKE_WALLET,
-            FAKE_SIGNATURE,
-            repo,
-            makeAddressRecoverer(),
-            makeJwtSigner(),
-            FAKE_NOW
-        );
-
-        expect(result.token).toBe(FAKE_TOKEN);
-
-        expect(repo.deleteNonce).toHaveBeenCalledExactlyOnceWith(
-            FAKE_WALLET_NORMALIZED
-        );
-    });
-    it("should update user last login on success", async () => {
-        const repo = makeSignatureVerifier();
-        await verifySignature(
-            FAKE_WALLET,
-            FAKE_SIGNATURE,
-            repo,
-            makeAddressRecoverer(),
-            makeJwtSigner(),
-            FAKE_NOW
-        );
-        expect(repo.updateUserLastLogin).toHaveBeenCalledExactlyOnceWith(
-            FAKE_WALLET_NORMALIZED
+        authService = new AuthService(
+            mockNonceService,
+            mockSignatureService,
+            mockUserService,
+            mockTokenService
         );
     });
 
-    it("should throw error if nonce does not exist in db", async () => {
-        const repo = makeSignatureVerifier({
-            findNonce: vi.fn().mockResolvedValue(null),
+    describe("getNonceMessage", () => {
+        it("should return a formatted login message with a normalized wallet", async () => {
+            vi.mocked(mockNonceService.generateNonce).mockResolvedValue(
+                mockNonceRecord
+            );
+
+            const result = await authService.getNonceMessage(rawWallet);
+
+            expect(mockNonceService.generateNonce).toHaveBeenCalled();
+            expect(mockNonceService.generateNonce).toHaveBeenCalledWith(
+                normalizedWallet
+            );
+            expect(result).toBe(mockMessage);
         });
 
-        await expect(
-            verifySignature(
-                FAKE_WALLET,
-                FAKE_SIGNATURE,
-                repo,
-                makeAddressRecoverer(),
-                makeJwtSigner(),
-                FAKE_NOW
-            )
-        ).rejects.toThrowError("Nonce not found. Request a new one");
-    });
+        it("should throw errors from the nonce service", async () => {
+            vi.mocked(mockNonceService.generateNonce).mockRejectedValue(
+                new Error("DB Connection Failed")
+            );
 
-    it("Should throw error if nonce is expired", async () => {
-        const expired_date = new Date(FAKE_NOW.getTime() - 10 * 60_000);
-
-        const repo = makeSignatureVerifier({
-            findNonce: vi.fn().mockResolvedValue({
-                walletAddress: FAKE_WALLET_NORMALIZED,
-                nonce: FAKE_NONCE,
-                expiresAt: expired_date,
-            }),
+            await expect(
+                authService.getNonceMessage(rawWallet)
+            ).rejects.toThrow("DB Connection Failed");
         });
-
-        await expect(
-            verifySignature(
-                FAKE_WALLET,
-                FAKE_SIGNATURE,
-                repo,
-                makeAddressRecoverer(),
-                makeJwtSigner(),
-                FAKE_NOW
-            )
-        ).rejects.toThrowError("Nonce is expired. Request a new one");
     });
+    describe("verifySignature", () => {
+        it("should return token and delete nonce after successful verification", async () => {
+            const mockUser = {
+                id: "user123",
+            };
+            vi.mocked(mockNonceService.getValidNonce).mockResolvedValue(
+                mockNonceRecord
+            );
 
-    it("should not create user if user already exists", async () => {
-        const repo = makeSignatureVerifier({
-            findUser: vi.fn().mockResolvedValue({
-                walletAddress: FAKE_WALLET_NORMALIZED,
-                id: "user1",
-            }),
+            vi.mocked(
+                mockSignatureService.verifyWalletSignature
+            ).mockResolvedValue(undefined);
+
+            vi.mocked(mockUserService.identifyUser).mockResolvedValue(mockUser);
+
+            vi.mocked(mockTokenService.sign).mockResolvedValue(mockToken);
+
+            const result = await authService.verifySignature(
+                rawWallet,
+                mockSignature
+            );
+
+            expect(mockNonceService.getValidNonce).toHaveBeenCalledWith(
+                normalizedWallet
+            );
+            expect(
+                mockSignatureService.verifyWalletSignature
+            ).toHaveBeenCalledWith(
+                mockMessage,
+                mockSignature,
+                normalizedWallet
+            );
+            expect(mockUserService.identifyUser).toHaveBeenCalledWith(
+                normalizedWallet
+            );
+            expect(mockTokenService.sign).toHaveBeenCalledWith({
+                walletAddress: normalizedWallet,
+                userId: mockUser.id,
+            });
+            expect(
+                mockNonceService.deleteNonce
+            ).toHaveBeenCalledExactlyOnceWith(normalizedWallet);
+
+            expect(result.token).toBe(mockToken);
         });
-
-        await verifySignature(
-            FAKE_WALLET,
-            FAKE_SIGNATURE,
-            repo,
-            makeAddressRecoverer(),
-            makeJwtSigner(),
-            FAKE_NOW
-        );
-
-        expect(repo.createUser).toHaveBeenCalledTimes(0);
-        expect(repo.findUser).toHaveBeenCalledWith(FAKE_WALLET_NORMALIZED);
-    });
-
-    it("should create user if user does not exist", async () => {
-        const repo = makeSignatureVerifier();
-
-        await verifySignature(
-            FAKE_WALLET,
-            FAKE_SIGNATURE,
-            repo,
-            makeAddressRecoverer(),
-            makeJwtSigner(),
-            FAKE_NOW
-        );
-
-        expect(repo.createUser).toHaveBeenCalledWith(FAKE_WALLET_NORMALIZED);
-    });
-
-    it("should throw error of recovered wallet does not match normalized wallet", async () => {
-        const repo = makeSignatureVerifier();
-        const random_wallet = "0xRandomWallet";
-
-        await expect(
-            verifySignature(
-                FAKE_WALLET,
-                FAKE_SIGNATURE,
-                repo,
-                makeAddressRecoverer(random_wallet),
-                makeJwtSigner(),
-                FAKE_NOW
-            )
-        ).rejects.toThrowError("Invalid signature.");
     });
 });
