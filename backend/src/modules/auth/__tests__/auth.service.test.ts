@@ -127,5 +127,57 @@ describe("AuthService", () => {
 
             expect(result.token).toBe(mockToken);
         });
+
+        it("should throw error and halts the flow if nonce is invalid", async () => {
+            vi.mocked(mockNonceService.getValidNonce).mockRejectedValue(
+                new Error("Invalid Nonce")
+            );
+
+            await expect(
+                authService.verifySignature(rawWallet, mockSignature)
+            ).rejects.toThrow(new Error("Invalid Nonce"));
+
+            expect(
+                mockSignatureService.verifyWalletSignature
+            ).not.toHaveBeenCalled();
+            expect(mockUserService.identifyUser).not.toHaveBeenCalled();
+            expect(mockTokenService.sign).not.toHaveBeenCalled();
+            expect(mockNonceService.deleteNonce).not.toHaveBeenCalled();
+        });
+
+        it("should throw error and not sign token if signature verification fails", async () => {
+            vi.mocked(mockNonceService.getValidNonce).mockResolvedValue(
+                mockNonceRecord
+            );
+
+            vi.mocked(
+                mockSignatureService.verifyWalletSignature
+            ).mockRejectedValue(new Error("Invalid Signature"));
+
+            await expect(
+                authService.verifySignature(rawWallet, mockSignature)
+            ).rejects.toThrowError(new Error("Invalid Signature"));
+
+            expect(mockUserService.identifyUser).not.toHaveBeenCalled();
+            expect(mockTokenService.sign).not.toHaveBeenCalled();
+            expect(mockNonceService.deleteNonce).not.toHaveBeenCalled();
+        });
+        it("should propagate errors if token service fails", async () => {
+            vi.mocked(mockNonceService.getValidNonce).mockResolvedValue(
+                mockNonceRecord
+            );
+            vi.mocked(
+                mockSignatureService.verifyWalletSignature
+            ).mockResolvedValue(undefined);
+            vi.mocked(mockTokenService.sign).mockRejectedValue(
+                new Error("Invalid Token")
+            );
+
+            await expect(
+                authService.verifySignature(rawWallet, mockSignature)
+            ).rejects.toThrow(new Error("Invalid Token"));
+
+            expect(mockNonceService.deleteNonce).not.toHaveBeenCalled();
+        });
     });
 });
